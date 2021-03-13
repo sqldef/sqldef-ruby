@@ -105,7 +105,7 @@ module Sqldef
 
     def execute(*cmd, **opts)
       unless system(*cmd, **opts)
-        raise "Failed to execute '#{cmd.first}'"
+        raise "Failed to execute '#{cmd.first.is_a?(Hash) ? cmd[1] : cmd.first}'"
       end
     end
 
