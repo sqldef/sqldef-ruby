@@ -18,7 +18,7 @@ Sqldef.bin = './bin'
 Sqldef.download(:psqldef)
 ```
 
-`download` is automatically executed by following methods too.
+`download` is automatically executed by the following methods too.
 
 ### Export
 
