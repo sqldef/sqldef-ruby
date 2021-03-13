@@ -24,6 +24,11 @@ module Sqldef
   ]
   private_constant :COMMANDS
 
+  ENVS = {
+    'psqldef' => { 'PGSSLMODE' => 'disable' }, # TODO: support updating this
+  }
+  private_constant :ENVS
+
   @bin = Dir.pwd
 
   class << self
@@ -35,7 +40,7 @@ module Sqldef
       sqldef = download(command)
       schema = IO.popen(
         [
-          sqldef,
+          env(command), sqldef,
           "--user=#{user}", *(["--password=#{password}"] if password),
           "--host=#{host}", *(["--port=#{port}"] if port),
           '--export', database,
@@ -51,7 +56,7 @@ module Sqldef
     def dry_run(command:, path:, host:, port: nil, user:, password: nil, database:)
       sqldef = download(command)
       execute(
-        sqldef,
+        env(command), sqldef,
         "--user=#{user}", *(["--password=#{password}"] if password),
         "--host=#{host}", *(["--port=#{port}"] if port),
         '--dry-run', database,
@@ -64,7 +69,7 @@ module Sqldef
     def apply(command:, path:, host:, port: nil, user:, password: nil, database:)
       sqldef = download(command)
       execute(
-        sqldef,
+        env(command), sqldef,
         "--user=#{user}", *(["--password=#{password}"] if password),
         "--host=#{host}", *(["--port=#{port}"] if port),
         database,
@@ -102,6 +107,10 @@ module Sqldef
       unless system(*cmd, **opts)
         raise "Failed to execute '#{cmd.first}'"
       end
+    end
+
+    def env(command)
+      ENVS.fetch(command.to_s, {})
     end
 
     def build_url(command)
