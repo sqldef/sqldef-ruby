@@ -88,9 +88,7 @@ module Sqldef
 
       print("Downloading '#{command}' under '#{bin}'... ")
       url = build_url(command)
-      resp = get(url, code: 302)                # Latest
-      resp = get(resp['location'],   code: 302) # vX.Y.Z
-      resp = get(resp['location'],   code: 200) # Binary
+      resp = get(url, code: 200, max_retries: 4)
 
       if url.end_with?('.zip')
         Zip::File.open_buffer(resp.body) do |zip|
@@ -134,15 +132,19 @@ module Sqldef
     end
 
     # TODO: Retry transient errors
-    def get(url, code: nil)
+    def get(url, code: nil, max_retries:)
       uri = URI.parse(url)
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+      resp = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
         http.get("#{uri.path}?#{uri.query}")
-      end.tap do |resp|
-        if code && resp.code != code.to_s
-          raise "Expected '#{url}' to return #{code}, but got #{resp.code}: #{resp.body}"
-        end
       end
+      if resp.is_a?(Net::HTTPRedirection) && max_retries > 0
+        # Follow redirects that lead to the current repository (if sqldef/sqldef is moved),
+        # Latest, vX.Y.Z, and to the binary
+        return get(resp['location'], code: code, max_retries: max_retries - 1)
+      elsif code && resp.code != code.to_s
+        raise "Expected '#{url}' to return #{code}, but got #{resp.code}: #{resp.body}"
+      end
+      resp
     end
   end
 end
