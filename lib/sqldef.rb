@@ -7,6 +7,7 @@ require 'rubygems/package'
 require 'stringio'
 require 'uri'
 require 'zlib'
+require 'zip'
 require_relative 'sqldef/version'
 
 module Sqldef
@@ -23,6 +24,13 @@ module Sqldef
     sqlite3def
   ]
   private_constant :COMMANDS
+
+  OS_ARCHIVE = {
+    'linux' => 'tar.gz',
+    'windows' => 'zip',
+    'darwin' => 'zip',
+  }
+  private_constant :OS_ARCHIVE
 
   @bin = Dir.pwd
 
@@ -79,16 +87,26 @@ module Sqldef
       return path if File.executable?(path)
 
       print("Downloading '#{command}' under '#{bin}'... ")
-      resp = get(build_url(command), code: 302) # Latest
+      url = build_url(command)
+      resp = get(url, code: 302)                # Latest
       resp = get(resp['location'],   code: 302) # vX.Y.Z
       resp = get(resp['location'],   code: 200) # Binary
 
-      gzip = Zlib::GzipReader.new(StringIO.new(resp.body))
-      Gem::Package::TarReader.new(gzip) do |tar|
-        unless file = tar.find { |f| f.full_name == command }
-          raise "'#{command}' was not found in the archive"
+      if url.end_with?('.zip')
+        Zip::File.open_buffer(resp.body) do |zip|
+          unless entry = zip.find_entry(command)
+            raise "'#{command}' was not found in the archive"
+          end
+          File.binwrite(path, zip.read(entry))
         end
-        File.binwrite(path, file.read)
+      else
+        gzip = Zlib::GzipReader.new(StringIO.new(resp.body))
+        Gem::Package::TarReader.new(gzip) do |tar|
+          unless file = tar.find { |f| f.full_name == command }
+            raise "'#{command}' was not found in the archive"
+          end
+          File.binwrite(path, file.read)
+        end
       end
 
       FileUtils.chmod('+x', path)
@@ -109,8 +127,10 @@ module Sqldef
         raise "Unexpected sqldef command: #{command}" 
       end
       os = Etc.uname.fetch(:sysname).downcase
-      arch = GOARCH.fetch(Etc.uname.fetch(:machine))
-      "https://github.com/k0kubun/sqldef/releases/latest/download/#{command}_#{os}_#{arch}.tar.gz"
+      archive = OS_ARCHIVE.fetch(os)
+      arch = Etc.uname.fetch(:machine)
+      goarch = GOARCH.fetch(arch, arch)
+      "https://github.com/k0kubun/sqldef/releases/latest/download/#{command}_#{os}_#{goarch}.#{archive}"
     end
 
     # TODO: Retry transient errors
