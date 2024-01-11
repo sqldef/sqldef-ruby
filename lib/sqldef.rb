@@ -130,7 +130,7 @@ module Sqldef
       archive = OS_ARCHIVE.fetch(os)
       arch = Etc.uname.fetch(:machine)
       goarch = GOARCH.fetch(arch, arch)
-      "https://github.com/k0kubun/sqldef/releases/latest/download/#{command}_#{os}_#{goarch}.#{archive}"
+      "https://github.com/sqldef/sqldef/releases/latest/download/#{command}_#{os}_#{goarch}.#{archive}"
     end
 
     # TODO: Retry transient errors
