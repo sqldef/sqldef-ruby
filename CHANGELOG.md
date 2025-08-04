@@ -1,3 +1,9 @@
+## v0.4.0
+
+- Follow redirects during downloading
+- Follow the repository move from k0kubun to sqldef
+- Add support for zip archive type for Windows and macOS
+
 ## v0.3.0
 
 - Remove the `PGSSLMODE=disable` workaround of v0.2.x
